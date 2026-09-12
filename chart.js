@@ -144,29 +144,47 @@
     });
 
     /* ── 값 꺾은선.
-       횟수(수유·기저귀)는 기록이 없는 날 선을 끊습니다. 이어 버리면 그날도 그만큼
-       먹였다는 뜻이 되어 버리니까요.
-       체중은 반대로 이어 붙입니다(connectGaps). 매일 재는 값이 아니라 며칠 간격으로
-       재는 것이 정상이고, 그 사이를 잇는 선은 '추세'라는 원래 의미 그대로입니다. */
+       연속으로 기록한 날만 실선으로 잇습니다.
+
+       횟수(수유·기저귀)는 빈 날에서 아예 끊습니다. 이어 버리면 기록하지 않은 날에도
+       그만큼 먹였다는 뜻이 되어 버리니까요.
+
+       체중은 빈 구간을 '점선'으로 잇습니다(connectGaps). 매일 재는 값이 아니라
+       며칠 간격으로 재는 것이 정상이라 잰 값끼리 추세를 보는 것은 맞지만,
+       실선으로 그으면 그 사이를 아는 것처럼 보입니다. 신생아는 보통 며칠 빠졌다가
+       회복하므로, 모르는 구간은 모른다고 보이게 점선으로 둡니다. */
     var sorted = pts.slice().sort(function (a, b) { return a.x - b.x; });
+    var runs = [];
     var seg = [];
     sorted.forEach(function (p, idx) {
       var prev = sorted[idx - 1];
-      if (prev && p.x - prev.x > 1 && !spec.connectGaps) { flushSeg(); }
+      if (prev && p.x - prev.x > 1) { if (seg.length) runs.push(seg); seg = []; }
       seg.push(p);
     });
-    flushSeg();
+    if (seg.length) runs.push(seg);
 
-    function flushSeg() {
-      if (seg.length > 1) {
-        svg.appendChild(el('polyline', {
-          points: seg.map(function (p) { return X(p.x) + ',' + Y(p.y); }).join(' '),
-          fill: 'none', stroke: COLOR.line, 'stroke-width': 2,
-          'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+    // 기록이 없는 구간을 잇는 점선 (체중에만)
+    if (spec.connectGaps) {
+      for (var ri = 1; ri < runs.length; ri++) {
+        var from = runs[ri - 1][runs[ri - 1].length - 1];
+        var to = runs[ri][0];
+        svg.appendChild(el('line', {
+          x1: X(from.x), y1: Y(from.y), x2: X(to.x), y2: Y(to.y),
+          stroke: COLOR.line, 'stroke-width': 2, 'stroke-dasharray': '2 5',
+          'stroke-linecap': 'round', opacity: .5
         }));
       }
-      seg = [];
     }
+
+    // 연달아 기록한 날들만 실선
+    runs.forEach(function (run) {
+      if (run.length < 2) return;
+      svg.appendChild(el('polyline', {
+        points: run.map(function (p) { return X(p.x) + ',' + Y(p.y); }).join(' '),
+        fill: 'none', stroke: COLOR.line, 'stroke-width': 2,
+        'stroke-linejoin': 'round', 'stroke-linecap': 'round'
+      }));
+    });
 
     // ── 점. 색은 그날의 신호(green/yellow/red)를 그대로 씁니다.
     sorted.forEach(function (p) {
@@ -276,8 +294,8 @@
           { y: bw * (1 - th.yellowLossPct / 100), label: '−' + th.yellowLossPct + '%', color: COLOR.yellow },
           { y: bw * (1 - th.redLossPct / 100), label: '−' + th.redLossPct + '%', color: COLOR.red }
         ],
-        legend: '점선은 위에서부터 출생체중, −' + th.yellowLossPct + '%, −' + th.redLossPct +
-                '% 입니다. 점 색은 그날의 체중 신호이고, 잰 날끼리 선으로 잇습니다.'
+        legend: '가로 점선은 위에서부터 출생체중, −' + th.yellowLossPct + '%, −' + th.redLossPct +
+                '% 입니다. 잰 날끼리 선으로 잇되, 기록이 없는 구간은 흐린 점선으로 표시합니다.'
       };
     }
 
