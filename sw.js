@@ -53,6 +53,13 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/* 기기가 오프라인이라고 알려주면 네트워크를 아예 시도하지 않습니다.
+ * 비행기모드에서 요청을 걸면 iOS 가 "비행기모드를 끄세요" 시스템 알림을 띄우는데,
+ * 어차피 실패할 요청 때문에 새벽마다 알림이 뜨는 것을 막기 위해서입니다. */
+function offline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -69,6 +76,9 @@ self.addEventListener('fetch', (event) => {
 });
 
 function networkFirst(req) {
+  if (offline()) {
+    return caches.match(req).then((hit) => hit || offlineFallback(req));
+  }
   return fetch(req)
     .then((res) => {
       if (res && res.ok) {
@@ -82,6 +92,9 @@ function networkFirst(req) {
 
 function staleWhileRevalidate(req) {
   return caches.match(req).then((cached) => {
+    // 오프라인이고 캐시에 있으면 그대로 돌려줍니다. 뒤에서 갱신하려 애쓰지 않습니다.
+    if (cached && offline()) return cached;
+
     const fresh = fetch(req)
       .then((res) => {
         if (res && res.ok) {

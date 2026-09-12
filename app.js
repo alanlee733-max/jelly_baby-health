@@ -114,6 +114,9 @@
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+    // 오프라인일 때는 등록(=갱신 확인)을 건너뜁니다. 이미 설치된 서비스워커는 그대로 동작하고,
+    // 어차피 실패할 요청 때문에 비행기모드에서 시스템 알림이 뜨는 것을 막습니다.
+    if (navigator.onLine === false) return;
     navigator.serviceWorker.register('sw.js').catch(function () { /* 없어도 앱은 동작합니다 */ });
   }
 
