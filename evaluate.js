@@ -276,9 +276,16 @@
     items.forEach(function (it) { overall = worse(overall, it.flag); });
     if (symptoms.length) overall = 'red';
 
-    // 심한 항목이 위로 오도록 정렬 (같은 등급이면 입력 순서 유지)
+    // 심한 항목이 위로 오도록 정렬.
+    // 같은 등급이면 '즉시 상담이 필요한 신호'를 맨 앞에 둡니다 — 가장 급한 항목이라서.
     var order = items.slice();
-    order.sort(function (a, b) { return (RANK[b.flag] || 0) - (RANK[a.flag] || 0); });
+    order.sort(function (a, b) {
+      var d = (RANK[b.flag] || 0) - (RANK[a.flag] || 0);
+      if (d !== 0) return d;
+      if (a.key === 'symptoms') return -1;
+      if (b.key === 'symptoms') return 1;
+      return 0;
+    });
 
     var byKey = {};
     items.forEach(function (it) { byKey[it.key] = it; });
