@@ -140,9 +140,10 @@ body[data-screen="basis"] #screen-basis { display: block; }
 .card-note { margin: 6px 0 0; font-size: 13px; color: var(--text-dim); }
 
 /* 출처 링크 — green 이 아닌 카드에는 반드시 붙습니다 */
-.src { margin: 8px 0 0; font-size: 13px; }
+.src { margin: 2px 0 0; font-size: 13px; }
+/* 출처 링크도 새벽에 한 손으로 누를 수 있어야 하므로 위아래 여백으로 48px 을 만듭니다. */
 .src a {
-  display: inline-block; min-height: 32px; line-height: 32px;
+  display: inline-block; padding: 14px 0; line-height: 20px;
   color: var(--accent); text-decoration: underline; text-underline-offset: 3px;
   overflow-wrap: anywhere;
 }
