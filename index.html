@@ -123,12 +123,13 @@
       <!-- 수유 -->
       <section class="box" data-section="feeding">
         <h2 class="box-title">수유 <span class="sig" data-sig="feeding"></span></h2>
+        <p class="box-hint">모르는 값은 <b>—</b> 그대로 두세요. 판정하지 않습니다. 숫자를 누르면 다시 <b>—</b>로 돌아갑니다.</p>
 
         <div class="stepper-row" data-stepper="breastFeedCount">
           <span class="stepper-label">모유 횟수</span>
           <div class="stepper">
             <button type="button" class="step-btn" data-step="-1" aria-label="모유 횟수 감소">−</button>
-            <output class="step-val" id="val-breastFeedCount">0</output>
+            <button type="button" class="step-val" id="val-breastFeedCount" data-clear="breastFeedCount" aria-label="모유 횟수, 눌러서 모름으로 되돌리기">—</button>
             <button type="button" class="step-btn" data-step="1" aria-label="모유 횟수 증가">+</button>
           </div>
         </div>
@@ -137,7 +138,7 @@
           <span class="stepper-label">분유 횟수</span>
           <div class="stepper">
             <button type="button" class="step-btn" data-step="-1" aria-label="분유 횟수 감소">−</button>
-            <output class="step-val" id="val-formulaFeedCount">0</output>
+            <button type="button" class="step-val" id="val-formulaFeedCount" data-clear="formulaFeedCount" aria-label="분유 횟수, 눌러서 모름으로 되돌리기">—</button>
             <button type="button" class="step-btn" data-step="1" aria-label="분유 횟수 증가">+</button>
           </div>
         </div>
@@ -156,7 +157,7 @@
           <span class="stepper-label">젖은 기저귀</span>
           <div class="stepper">
             <button type="button" class="step-btn" data-step="-1" aria-label="젖은 기저귀 감소">−</button>
-            <output class="step-val" id="val-wetDiaperCount">0</output>
+            <button type="button" class="step-val" id="val-wetDiaperCount" data-clear="wetDiaperCount" aria-label="젖은 기저귀, 눌러서 모름으로 되돌리기">—</button>
             <button type="button" class="step-btn" data-step="1" aria-label="젖은 기저귀 증가">+</button>
           </div>
         </div>
@@ -165,7 +166,7 @@
           <span class="stepper-label">대변 횟수</span>
           <div class="stepper">
             <button type="button" class="step-btn" data-step="-1" aria-label="대변 횟수 감소">−</button>
-            <output class="step-val" id="val-stoolCount">0</output>
+            <button type="button" class="step-val" id="val-stoolCount" data-clear="stoolCount" aria-label="대변 횟수, 눌러서 모름으로 되돌리기">—</button>
             <button type="button" class="step-btn" data-step="1" aria-label="대변 횟수 증가">+</button>
           </div>
         </div>

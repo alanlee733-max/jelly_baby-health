@@ -430,12 +430,23 @@
     });
   }
 
+  /* 스테퍼는 '모름(—)' 과 '0' 을 구분합니다.
+     손대지 않은 값은 —(null) 로 남아 판정되지 않고, 실제로 0 이었던 날만 0 으로 명시합니다.
+     조리원처럼 기록이 없던 기간을 0 으로 저장해 '부족'으로 보이게 하지 않기 위해서입니다. */
   function setStep(name, value) {
-    var n = (typeof value === 'number' && isFinite(value)) ? value : 0;
-    $('#val-' + name).textContent = n;
-    $('#val-' + name).dataset.value = n;
+    var el = $('#val-' + name);
+    var has = (typeof value === 'number' && isFinite(value));
+    el.textContent = has ? value : '—';
+    el.dataset.value = has ? String(value) : '';
+    el.classList.toggle('is-empty', !has);
   }
-  function getStep(name) { return parseInt($('#val-' + name).dataset.value || '0', 10); }
+
+  function getStep(name) {
+    var raw = $('#val-' + name).dataset.value;
+    if (raw === '' || raw == null) return null;      // 모름
+    var n = parseInt(raw, 10);
+    return isFinite(n) ? n : null;
+  }
 
   function numOrNull(sel) {
     var v = $(sel).value.trim();
@@ -643,11 +654,23 @@
 
     // 스테퍼 (− / +)
     $('#form-log').addEventListener('click', function (e) {
+      // 숫자를 누르면 다시 '모름(—)' 으로 되돌립니다.
+      var val = e.target.closest('.step-val');
+      if (val) {
+        setStep(val.dataset.clear, null);
+        touched();
+        return;
+      }
+
       var btn = e.target.closest('.step-btn');
       if (!btn) return;
       var row = btn.closest('[data-stepper]');
       var name = row.dataset.stepper;
-      var next = Math.max(0, Math.min(60, getStep(name) + (+btn.dataset.step)));
+      var cur = getStep(name);
+      var step = +btn.dataset.step;
+      // 모름 상태에서는 + 가 1, − 가 0 입니다. (− 로 '0회' 를 바로 명시할 수 있게)
+      var next = (cur === null) ? (step > 0 ? 1 : 0)
+                                : Math.max(0, Math.min(60, cur + step));
       setStep(name, next);
       touched();
     });

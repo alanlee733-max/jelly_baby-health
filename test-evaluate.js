@@ -178,3 +178,32 @@ assert('오전이어도 발열은 즉시 red (' + feverAM.byKey.temperature.flag
 // now 를 넘기지 않으면 지금까지와 똑같이 동작
 assert('now 없이 부르면 예전과 동일하게 전부 판정',
        evaluate(partial, baby, criteria).byKey.feeding.flag === 'red');
+
+// ── 모름(null) 과 0 의 구분 ────────────────────────────────
+// 조리원처럼 기록이 없던 날: 아는 것은 체중뿐
+const unknown = L({ date: '2026-09-05', breastFeedCount: null, formulaFeedCount: null,
+                    wetDiaperCount: null, stoolCount: null, stoolColor: [], stoolTexture: null,
+                    temperature: null, jaundiceLevel: null, alertness: null, weightGram: 3200 });
+const u = evaluate(unknown, baby, criteria, evening);
+console.log('\n기록 없던 날 (체중만 앎) → 종합 ' + u.overall +
+            ' / 판정 ' + u.items.map(i => i.label + '=' + i.flag).join(', ') +
+            ' / 미입력 ' + u.missing.map(m => m.label).join(', '));
+assert('모름(null)인 횟수는 판정하지 않고 미입력으로 (' + u.overall + ')',
+       !u.byKey.feeding && !u.byKey.wetDiapers && !u.byKey.stool && u.overall === 'green');
+assert('그 날도 체중은 그대로 판정됨 (' + u.byKey.weight.flag + ')', u.byKey.weight.flag === 'green');
+
+// 같은 날을 0 으로 저장하면 0 회로 판정됩니다 (모름과 다름)
+const zeros = evaluate(L({ date: '2026-09-05', breastFeedCount: 0, formulaFeedCount: 0,
+                           wetDiaperCount: 0, stoolCount: 0, stoolColor: [], stoolTexture: null }),
+                       baby, criteria, evening);
+assert('명시한 0 은 그대로 판정됨 (수유 ' + zeros.byKey.feeding.flag +
+       ', 기저귀 ' + zeros.byKey.wetDiapers.flag + ', 대변 ' + zeros.byKey.stool.flag + ')',
+       zeros.byKey.feeding.flag === 'red' && zeros.byKey.wetDiapers.flag === 'red' &&
+       zeros.byKey.stool.flag === 'yellow');
+
+// 오늘 오후부터 기록을 시작한 날: 횟수는 모름으로 두고 체중만 넣은 경우
+const firstDay = evaluate(L({ breastFeedCount: null, formulaFeedCount: null, wetDiaperCount: null,
+                              stoolCount: null, stoolColor: [], stoolTexture: null,
+                              temperature: null, weightGram: 3690 }), baby, criteria, evening);
+assert('기록 시작일: 밤 9시가 지나도 빨간불이 뜨지 않음 (' + firstDay.overall + ')',
+       firstDay.overall === 'green');

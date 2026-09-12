@@ -219,9 +219,13 @@ input:focus, textarea:focus, .chip:focus-visible, .btn:focus-visible,
 .step-btn:active { background: var(--line); }
 .step-btn:disabled { opacity: .3; cursor: default; }
 .step-val {
-  min-width: 48px; text-align: center;
+  min-width: 48px; min-height: var(--tap); padding: 0 4px;
+  background: none; border: 0; color: var(--text);
+  text-align: center; font-family: inherit;
   font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+  cursor: pointer; touch-action: manipulation;
 }
+.step-val.is-empty { color: var(--text-dim); font-weight: 400; }
 
 /* 칩 */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }

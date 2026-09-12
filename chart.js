@@ -143,12 +143,16 @@
       }
     });
 
-    // ── 값 꺾은선. 기록이 없는 날은 이어 붙이지 않고 끊습니다.
+    /* ── 값 꺾은선.
+       횟수(수유·기저귀)는 기록이 없는 날 선을 끊습니다. 이어 버리면 그날도 그만큼
+       먹였다는 뜻이 되어 버리니까요.
+       체중은 반대로 이어 붙입니다(connectGaps). 매일 재는 값이 아니라 며칠 간격으로
+       재는 것이 정상이고, 그 사이를 잇는 선은 '추세'라는 원래 의미 그대로입니다. */
     var sorted = pts.slice().sort(function (a, b) { return a.x - b.x; });
     var seg = [];
     sorted.forEach(function (p, idx) {
       var prev = sorted[idx - 1];
-      if (prev && p.x - prev.x > 1) { flushSeg(); }
+      if (prev && p.x - prev.x > 1 && !spec.connectGaps) { flushSeg(); }
       seg.push(p);
     });
     flushSeg();
@@ -265,7 +269,7 @@
       var th = (cats.weight || {}).thresholds || {};
       var bw = baby.birthWeight;
       return {
-        points: pts, unit: 'g',
+        points: pts, unit: 'g', connectGaps: true,
         ariaLabel: '체중 추이',
         refLines: [
           { y: bw, label: '출생 ' + bw + 'g', color: COLOR.text, dash: '2 3' },
@@ -273,7 +277,7 @@
           { y: bw * (1 - th.redLossPct / 100), label: '−' + th.redLossPct + '%', color: COLOR.red }
         ],
         legend: '점선은 위에서부터 출생체중, −' + th.yellowLossPct + '%, −' + th.redLossPct +
-                '% 입니다. 점 색은 그날의 체중 신호입니다.'
+                '% 입니다. 점 색은 그날의 체중 신호이고, 잰 날끼리 선으로 잇습니다.'
       };
     }
 
@@ -293,9 +297,10 @@
 
     if (tab === 'feeding') {
       collect('feeding', function (l) {
-        var a = typeof l.breastFeedCount === 'number' ? l.breastFeedCount : 0;
-        var b = typeof l.formulaFeedCount === 'number' ? l.formulaFeedCount : 0;
-        return a + b;
+        var hasA = typeof l.breastFeedCount === 'number';
+        var hasB = typeof l.formulaFeedCount === 'number';
+        if (!hasA && !hasB) return null;        // 둘 다 모름인 날은 점을 찍지 않습니다
+        return (hasA ? l.breastFeedCount : 0) + (hasB ? l.formulaFeedCount : 0);
       });
       var ft = (cats.feeding || {}).thresholds || {};
       return {
