@@ -130,3 +130,51 @@ assert('체중 −7% yellow / −10% red (' + wb(2976) + ',' + wb(2880) + ')',
        wb(2976)==='yellow' && wb(2880)==='red');
 assert('생후 14일에 출생체중 미만이면 yellow (' + wb(3150, '2026-09-13') + ')', wb(3150, '2026-09-13')==='yellow');
 assert('생후 13일에 출생체중 미만이면 green (' + wb(3150, '2026-09-12') + ')', wb(3150, '2026-09-12')==='green');
+
+// ── 하루가 진행 중일 때의 보류 (criteria.partialDay) ──────────
+// 오전 10시, 오늘 기록, 수유 2회 / 기저귀 1개 / 대변 0회
+const morning = new Date(2026, 8, 11, 10, 46);      // 2026-09-11 10:46 (지역시)
+const evening = new Date(2026, 8, 11, 21, 30);      // 같은 날 밤 9시 30분
+const partial = L({ breastFeedCount: 2, formulaFeedCount: 0, wetDiaperCount: 1,
+                    stoolCount: 0, stoolColor: [], stoolTexture: null });
+
+const am = evaluate(partial, baby, criteria, morning);
+const pm = evaluate(partial, baby, criteria, evening);
+console.log('\n오전 10:46 (하루 진행 중)  → 종합 ' + am.overall +
+            ' / 집계 중: ' + am.pending.map(p => p.label).join(', '));
+am.pending.forEach(p => console.log('    ⏳ ' + p.label + ' — ' + p.message));
+console.log('밤 21:30 (기준 시각 이후) → 종합 ' + pm.overall + ' / 판정: ' +
+            pm.items.map(i => i.label + '=' + i.flag).join(', '));
+
+assert('오전에는 수유·기저귀를 판정하지 않고 집계 중으로 둠',
+       am.pending.length === 3 && !am.byKey.feeding.flag.match(/red|yellow|green/));
+assert('오전에도 종합은 red 가 아님 (' + am.overall + ')', am.overall !== 'red');
+assert('밤 9시 이후에는 같은 기록이 red 로 판정됨 (' + pm.byKey.feeding.flag + ')',
+       pm.byKey.feeding.flag === 'red' && pm.byKey.wetDiapers.flag === 'red');
+
+// 어제 기록은 지금이 오전이어도 그대로 판정합니다
+const yesterday = evaluate(L({ date: '2026-09-10', breastFeedCount: 2, formulaFeedCount: 0,
+                              wetDiaperCount: 1 }), baby, criteria, morning);
+assert('어제 기록은 오전에도 그대로 판정 (' + yesterday.byKey.feeding.flag + ')',
+       yesterday.byKey.feeding.flag === 'red');
+
+// ★ 가장 중요: 흰 변은 시간과 무관하게 즉시 red
+const whiteAM = evaluate(L({ stoolColor: ['white'], stoolCount: 1, breastFeedCount: 2,
+                            formulaFeedCount: 0, wetDiaperCount: 1 }), baby, criteria, morning);
+assert('오전이어도 흰 변은 즉시 red (' + whiteAM.byKey.stool.flag + ', 종합 ' + whiteAM.overall + ')',
+       whiteAM.byKey.stool.flag === 'red' && whiteAM.overall === 'red');
+
+// 증상 체크도 시간과 무관
+const sympAM = evaluate(L({ symptoms: ['breathing'], breastFeedCount: 1, formulaFeedCount: 0,
+                           wetDiaperCount: 0 }), baby, criteria, morning);
+assert('오전이어도 증상 체크는 즉시 red (' + sympAM.overall + ')', sympAM.overall === 'red');
+
+// 체온·체중·황달·활력은 순간값이므로 오전에도 판정
+const feverAM = evaluate(L({ temperature: 38.3, breastFeedCount: 2, formulaFeedCount: 0,
+                            wetDiaperCount: 1 }), baby, criteria, morning);
+assert('오전이어도 발열은 즉시 red (' + feverAM.byKey.temperature.flag + ')',
+       feverAM.byKey.temperature.flag === 'red');
+
+// now 를 넘기지 않으면 지금까지와 똑같이 동작
+assert('now 없이 부르면 예전과 동일하게 전부 판정',
+       evaluate(partial, baby, criteria).byKey.feeding.flag === 'red');

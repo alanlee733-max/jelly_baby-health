@@ -297,7 +297,8 @@
 
     var today = todayStr();
     var log = loadLog(today);
-    var r = NTEvaluate.evaluate(log, baby, state.criteria);
+    // 현재 시각을 함께 넘깁니다. 오늘 하루가 아직 진행 중이면 총계 항목은 '집계 중'으로 남습니다.
+    var r = NTEvaluate.evaluate(log, baby, state.criteria, new Date());
 
     // 일령은 기록이 있든 없든 항상 보여야 합니다.
     // evaluate 는 기록이 없으면 일령을 셀 수 없으므로(날짜가 없어서) 여기서 직접 셉니다.
@@ -312,12 +313,19 @@
       green:  '오늘 입력한 항목은 모두 기준 범위입니다',
       none:   '오늘 기록이 아직 없습니다'
     };
+    var text = LIGHT[r.overall];
+    // 아직 집계 중인 항목이 있으면 "모두 괜찮다"고 단정하지 않습니다.
+    if (r.pending.length) {
+      if (r.overall === 'green') text = '지금까지 입력한 항목은 기준 범위입니다';
+      if (r.overall === 'none') text = '오늘은 아직 집계 중입니다';
+    }
     $('#home-light').dataset.flag = r.overall;
-    $('#home-light-text').textContent = LIGHT[r.overall];
+    $('#home-light-text').textContent = text;
 
     var wrap = $('#home-cards');
     wrap.innerHTML = '';
     r.items.forEach(function (it) { wrap.appendChild(card(it)); });
+    r.pending.forEach(function (p) { wrap.appendChild(card(p)); });
     r.missing.forEach(function (m) {
       wrap.appendChild(card({ label: m.label, flag: 'missing', message: '아직 입력하지 않음' }));
     });
@@ -334,12 +342,21 @@
     head.className = 'card-head';
     var dot = document.createElement('span');
     dot.className = 'sig';
-    if (it.flag !== 'missing') dot.dataset.flag = it.flag;
+    dot.dataset.flag = it.flag;
     var lab = document.createElement('span');
     lab.className = 'card-label';
     lab.textContent = it.label;
     head.appendChild(dot);
     head.appendChild(lab);
+
+    // 아직 판정하지 않은 항목임을 한눈에 알 수 있게 표시합니다 (문구는 criteria.json 에서).
+    if (it.flag === 'pending') {
+      var pd = state.criteria.partialDay || {};
+      var badge = document.createElement('span');
+      badge.className = 'card-badge';
+      badge.textContent = pd.label || '집계 중';
+      head.appendChild(badge);
+    }
     el.appendChild(head);
 
     var msg = document.createElement('p');
@@ -348,7 +365,7 @@
     el.appendChild(msg);
 
     // green 이 아닌 항목에는 참고 문구와 출처 링크를 반드시 함께 보여줍니다.
-    if (it.flag !== 'green' && it.flag !== 'missing') {
+    if (it.flag !== 'green' && it.flag !== 'missing' && it.flag !== 'pending') {
       if (it.note) {
         var note = document.createElement('p');
         note.className = 'card-note';
@@ -453,7 +470,7 @@
      저장 전에도 지금 입력값이 어떤 신호인지 바로 보입니다. */
   function updateLiveSignals() {
     if (!state.baby || !state.criteria) return;
-    var r = NTEvaluate.evaluate(collectLog(), state.baby, state.criteria);
+    var r = NTEvaluate.evaluate(collectLog(), state.baby, state.criteria, new Date());
     $$('.sig[data-sig]').forEach(function (el) {
       var it = r.byKey[el.dataset.sig];
       if (it) el.dataset.flag = it.flag;
@@ -466,7 +483,7 @@
     var log = collectLog();
     if (!saveLog(log)) return;
     state.dirty = false;
-    var r = NTEvaluate.evaluate(log, state.baby, state.criteria);
+    var r = NTEvaluate.evaluate(log, state.baby, state.criteria, new Date());
     $('#save-note').textContent = '저장했습니다' +
       (r.overall === 'red' ? ' · 확인이 필요한 항목이 있습니다' : '');
     updateLiveSignals();
@@ -510,6 +527,19 @@
       if (src) box.appendChild(sourceLine(src));
       wrap.appendChild(box);
     });
+
+    // 하루 총계 항목을 언제부터 판정하는지도 근거 화면에서 밝힙니다.
+    var pd = state.criteria.partialDay;
+    if (pd && pd.note) {
+      var pbox = document.createElement('section');
+      pbox.className = 'box';
+      var ph = document.createElement('h2');
+      ph.className = 'box-title';
+      ph.textContent = pd.label || '집계 중';
+      pbox.appendChild(ph);
+      pbox.appendChild(para(pd.note));
+      wrap.appendChild(pbox);
+    }
 
     var rf = state.criteria.generalRedFlags || {};
     $('#basis-redflags-title').textContent = rf.label || '';

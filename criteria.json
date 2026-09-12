@@ -113,6 +113,17 @@
     }
   },
 
+  "partialDay": {
+    "cutoffHour": 21,
+    "label": "집계 중",
+    "note": "수유·기저귀처럼 하루 총계로 비교하는 항목은 그날이 끝나갈 무렵부터 판정합니다. 그 전에는 지금까지의 횟수만 보여주고 기준과 비교하지 않습니다. 오전에 아직 못 채운 횟수를 '부족'으로 표시하지 않기 위해서입니다. 대변의 색·형태처럼 시간과 무관한 항목은 언제나 그대로 판정합니다.",
+    "defer": {
+      "feeding": "all",
+      "wetDiapers": "all",
+      "stool": "zeroCount"
+    }
+  },
+
   "generalRedFlags": {
     "label": "즉시 상담이 필요한 신호",
     "sourceId": "webmd-callnow",

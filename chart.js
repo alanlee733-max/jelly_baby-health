@@ -206,8 +206,9 @@
     var tab = (root.NTApp && root.NTApp.activeTab()) || 'weight';
 
     // 각 기록을 판정해 둡니다. 점 색과 스트립 색에 씁니다. (저장하지 않고 매번 계산)
+    var now = new Date();
     var rows = logs.map(function (log) {
-      return { log: log, r: NTEvaluate.evaluate(log, baby, criteria) };
+      return { log: log, r: NTEvaluate.evaluate(log, baby, criteria, now) };
     }).filter(function (row) {
       return row.r.dayOfLife != null && row.r.dayOfLife >= 1;
     });

@@ -48,22 +48,34 @@
   }
 
   /* ────────────────────────────────────────────────────────────
-     evaluate(log, baby, criteria)
+     evaluate(log, baby, criteria, now)
+
+     now 는 선택입니다. 넣지 않으면 지금까지처럼 모든 항목을 곧바로 판정합니다.
+     넣으면 criteria.partialDay 규칙에 따라, '오늘 진행 중인 하루'의 총계 항목
+     (수유·기저귀 횟수)을 아직 판정하지 않고 '집계 중'으로 미룹니다.
+     오전 10시에 수유 2회를 '부족'이라고 말하지 않기 위해서입니다.
+     now 를 넣어도 같은 인자면 같은 결과가 나오므로 순수 함수는 그대로입니다.
 
      반환값
        dayOfLife : 일령 (숫자 또는 null)
        overall   : 'red' | 'yellow' | 'green' | 'none'  (판정할 게 없으면 none)
        items     : 판정된 항목들. 심한 순서(red→yellow→green)로 정렬됨
                    { key, label, flag, message, note, source:{name,url} }
-       byKey     : items 를 key 로 찾기 쉽게 만든 객체 (오늘 화면의 섹션별 신호용)
+       byKey     : items + pending 을 key 로 찾기 쉽게 만든 객체 (섹션별 신호용)
        missing   : 아직 입력하지 않은 항목 [{ key, label }]
+       pending   : 오늘이 끝나기 전이라 아직 판정하지 않은 항목 [{ key, label, message }]
        symptoms  : 체크된 즉시 상담 신호 [{ id, label }]
      ──────────────────────────────────────────────────────────── */
-  function evaluate(log, baby, criteria) {
+  function evaluate(log, baby, criteria, now) {
     var cats = (criteria && criteria.categories) || {};
     var items = [];
     var missing = [];
+    var pending = [];
     var day = (baby && log) ? dayOfLife(log.date, baby.birthDate) : null;
+
+    // 오늘 진행 중인 하루인지, 그래서 어떤 항목을 미룰지 정합니다.
+    var defer = deferRules(log, criteria, now);
+    var cutoffText = defer.cutoffText;
 
     function label(key, fallback) {
       return (cats[key] && cats[key].label) || fallback || key;
@@ -85,11 +97,22 @@
       missing.push({ key: key, label: label(key, fallback) });
     }
 
+    // 아직 판정하지 않고 지금까지의 값만 보여줍니다.
+    function hold(key, message) {
+      pending.push({
+        key: key,
+        label: label(key),
+        flag: 'pending',
+        message: message + ' · ' + cutoffText + '부터 기준과 비교합니다'
+      });
+    }
+
     if (!log || !baby || day === null) {
       // 기록이 없는 날. 판정하지 않고 전부 '아직 입력하지 않음'으로 둡니다.
       ['feeding', 'wetDiapers', 'stool', 'jaundice', 'alertness', 'temperature', 'weight']
         .forEach(function (k) { miss(k); });
-      return { dayOfLife: day, overall: 'none', items: [], byKey: {}, missing: missing, symptoms: [] };
+      return { dayOfLife: day, overall: 'none', items: [], byKey: {},
+               missing: missing, pending: [], symptoms: [] };
     }
 
     /* ── 수유 ────────────────────────────────────────────────
@@ -105,6 +128,10 @@
       if (breast === null && formula === null) { miss('feeding'); return; }
 
       var total = (breast || 0) + (formula || 0);
+
+      // 하루가 아직 진행 중이면 횟수를 기준과 비교하지 않습니다.
+      if (defer.rules.feeding === 'all') { hold('feeding', '지금까지 수유 ' + total + '회'); return; }
+
       var th, basis;
 
       if (baby.feedingType === 'formula') {
@@ -129,11 +156,15 @@
       if (!c || !c.minByDayOfLife) return;
       if (!isNum(log.wetDiaperCount)) { miss('wetDiapers'); return; }
 
+      var n = log.wetDiaperCount;
+      if (defer.rules.wetDiapers === 'all') {
+        hold('wetDiapers', '지금까지 젖은 기저귀 ' + n + '개');
+        return;
+      }
+
       var table = c.minByDayOfLife;
       var min = day >= 5 ? table['5plus'] : table[String(day)];
       if (!isNum(min)) { miss('wetDiapers'); return; }
-
-      var n = log.wetDiaperCount;
       var flag = n >= min ? 'green' : (n >= min - 1 ? 'yellow' : 'red');
       push('wetDiapers', flag,
         '오늘 젖은 기저귀 ' + n + '개 (생후 ' + day + '일 기준 최소 ' + min + '개)');
@@ -174,14 +205,22 @@
         if (t) { reasons.push(t.label); flag = worse(flag, t.flag); }
       }
 
-      if (count === 0 && c.zeroCountFlag) {
+      // 횟수가 0일 때의 판정만 하루가 끝나갈 때까지 미룹니다.
+      // 흰 변·혈변처럼 시간과 무관한 색·형태 판정은 여기서 그대로 살아 있습니다.
+      var holdZero = defer.rules.stool === 'zeroCount';
+
+      if (count === 0 && c.zeroCountFlag && !holdZero) {
         flag = worse(flag, c.zeroCountFlag);
         reasons.unshift('오늘 대변 0회');
       } else if (count !== null) {
-        reasons.unshift('오늘 대변 ' + count + '회');
+        reasons.unshift((holdZero ? '지금까지' : '오늘') + ' 대변 ' + count + '회');
       }
 
-      if (flag === 'none') { miss('stool'); return; }
+      if (flag === 'none') {
+        if (holdZero && count === 0) hold('stool', '지금까지 대변 0회');
+        else miss('stool');
+        return;
+      }
       push('stool', flag, reasons.join(' · '));
     })();
 
@@ -289,6 +328,7 @@
 
     var byKey = {};
     items.forEach(function (it) { byKey[it.key] = it; });
+    pending.forEach(function (it) { byKey[it.key] = it; });
 
     return {
       dayOfLife: day,
@@ -296,8 +336,36 @@
       items: order,
       byKey: byKey,
       missing: missing,
+      pending: pending,
       symptoms: symptoms
     };
+  }
+
+  /* criteria.partialDay 를 읽어, 이 기록이 '오늘 진행 중인 하루' 인지 판단합니다.
+     now 가 없거나, 기록이 오늘이 아니거나, 기준 시각을 넘겼으면 아무것도 미루지 않습니다. */
+  function deferRules(log, criteria, now) {
+    var none = { rules: {}, cutoffText: '' };
+    var pd = criteria && criteria.partialDay;
+    if (!pd || !now || !log || !log.date) return none;
+
+    var d = (now instanceof Date) ? now : new Date(now);
+    if (isNaN(d.getTime())) return none;
+
+    var today = d.getFullYear() + '-' +
+                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+    if (today !== log.date) return none;                 // 지난 날짜는 그대로 판정합니다
+    if (!isNum(pd.cutoffHour) || d.getHours() >= pd.cutoffHour) return none;
+
+    return { rules: pd.defer || {}, cutoffText: hourText(pd.cutoffHour) };
+  }
+
+  function hourText(h) {
+    if (h === 0) return '자정';
+    if (h < 12) return '오전 ' + h + '시';
+    if (h === 12) return '정오';
+    if (h < 18) return '오후 ' + (h - 12) + '시';
+    return '밤 ' + (h - 12) + '시';
   }
 
   var api = { evaluate: evaluate, dayOfLife: dayOfLife, RANK: RANK, worse: worse };

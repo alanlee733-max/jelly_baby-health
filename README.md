@@ -96,6 +96,7 @@ GitHub 에도, 다른 어떤 서버에도 올라가지 않습니다.
 | 체온 범위 | `categories.temperature.thresholds` |
 | 황달 단계별 신호 | `categories.jaundice.levels` |
 | 즉시 상담 신호 목록 | `generalRedFlags.items` |
+| 하루 총계 항목을 몇 시부터 판정할지 | `partialDay.cutoffHour` |
 | 출처 링크 | `sources` |
 | 기준 버전·검토일 | `version`, `lastReviewed` |
 
@@ -139,6 +140,14 @@ python3 -m http.server 8000
 
 **저장 버튼을 깜빡해도 괜찮습니다.** 화면을 옮기거나 날짜를 넘기거나 앱을 내려놓으면 입력하던 내용이 자동으로 저장됩니다.
 
+### "집계 중" 표시
+
+수유·기저귀처럼 **하루 총계로 비교하는 항목**은 아침에 아직 못 채운 것이 당연합니다. 오전 10시에 수유 2회를 "부족"이라고 표시하면 매일 아침 빨간 화면을 보게 되므로, 오늘 하루가 진행 중인 동안에는 지금까지의 횟수만 보여주고 **밤 9시부터 기준과 비교**합니다. 시각은 `criteria.json` 의 `partialDay.cutoffHour` 에서 바꿀 수 있습니다.
+
+시간과 무관한 항목은 **보류하지 않습니다.** 대변 색(흰 변·혈변), 체온, 체중, 황달, 활력, 그리고 즉시 상담 신호 체크는 오전이든 새벽이든 즉시 판정합니다. 대변은 색·형태는 그대로 보고, "0회"라는 횟수 판정만 미룹니다.
+
+어제 이전 기록은 시각과 관계없이 항상 그대로 판정합니다.
+
 ---
 
 ## 6. 파일 구조
@@ -147,7 +156,7 @@ python3 -m http.server 8000
 index.html        화면 하나에 섹션 5개 (설정/홈/오늘/추이/근거)
 style.css         어두운 테마, 터치 타겟 48px 이상
 criteria.json     ★ 판정 기준 · 문구 · 출처. 고칠 곳은 여기입니다
-evaluate.js       판정 로직. 순수 함수 evaluate(log, baby, criteria)
+evaluate.js       판정 로직. 순수 함수 evaluate(log, baby, criteria, now)
 chart.js          SVG 그래프와 추이 화면
 app.js            저장 · 화면 전환 · 홈 · 오늘 화면
 manifest.json     홈 화면 추가용 앱 정보
@@ -186,5 +195,5 @@ const CACHE_VERSION = 'v1';   →   const CACHE_VERSION = 'v2';
 
 - 생후 2주까지를 기준으로 만들었습니다. 그 이후 기준은 `criteria.json` 에 없습니다.
 - 수면은 기록·그래프만 하고 판정하지 않습니다. `criteria.json` 의 `sleep` 에 기준값이 없기 때문입니다.
-- 수유 횟수는 하루 총계 기준입니다. 하루 중간에 저장하면 아직 못 채운 상태로 평가됩니다.
+- 하루 총계 항목(수유·기저귀·대변 횟수)은 밤 9시부터 판정합니다. 그 전에는 "집계 중"으로만 보입니다.
 - 아기 한 명만 기록합니다.
