@@ -1,0 +1,131 @@
+{
+  "version": "0.2-mvp-0to2weeks",
+  "lastReviewed": "2026-09-12",
+  "purpose": "부모용 관찰·기록 보조 도구입니다. 의학적 진단 도구가 아닙니다.",
+  "disclaimer": "이 앱은 아기의 건강 상태를 진단하지 않습니다. 표시되는 신호는 공개된 참고 기준과 입력값을 비교한 결과일 뿐입니다. 이상이 의심되면 반드시 소아청소년과 등 의료진과 상담하세요. 상담 권고 기준은 보수적으로 설정되어 있으며, 해당되지 않더라도 걱정되면 언제든 병원에 연락하는 것이 우선입니다.",
+
+  "sources": [
+    { "id": "mayo-jaundice", "name": "Mayo Clinic — Infant jaundice", "url": "https://monument.health/mayo-clinic-health-information-library/article/?mayo-id=ABT-20334726" },
+    { "id": "aap-jaundice", "name": "AAP HealthyChildren — Jaundice in Newborns", "url": "https://www.healthychildren.org/English/ages-stages/baby/Pages/jaundice.aspx" },
+    { "id": "aap-diaper", "name": "AAP 기준 기저귀 가이드 (Nurturepedia)", "url": "https://www.nurturepedia.com/blog/newborn-diapering-basics" },
+    { "id": "alberta-daily", "name": "MyHealth Alberta — Baby's Daily Needs", "url": "https://myhealth.alberta.ca/Health/pages/conditions.aspx?hwid=te6304" },
+    { "id": "weight-review", "name": "Neonatal Weight Loss — 체계적 문헌고찰", "url": "https://www.sciencedirect.com/topics/medicine-and-dentistry/neonatal-weight-loss" },
+    { "id": "apa-weight", "name": "American Pregnancy Association — Newborn Weight Gain", "url": "https://americanpregnancy.org/postpartum/newborn-weight-gain/" },
+    { "id": "who-temp", "name": "WHO / Merck Manual — 신생아 체온 조절", "url": "https://www.merckmanuals.com/professional/pediatrics/perinatal-problems/hypothermia-in-neonates" },
+    { "id": "stool-chart", "name": "Baby Poop Color Chart (AAP 기준 정리)", "url": "https://babysential.com/articles/baby-poop-color-chart" },
+    { "id": "norton-feeding", "name": "Norton Children's — Baby Feeding Chart", "url": "https://nortonchildrens.com/news/babyfeedingchart/" },
+    { "id": "webmd-callnow", "name": "WebMD — 신생아, 언제 병원에 연락할까", "url": "https://www.webmd.com/when-call-newborns-doctor" }
+  ],
+
+  "categories": {
+    "feeding": {
+      "label": "수유",
+      "sourceId": "norton-feeding",
+      "reference": {
+        "breast": "모유 수유는 하루 8~12회가 일반적입니다 (야간 포함).",
+        "formula": "분유 수유는 1주차 8~12회, 2주차부터 6~8회로 줄어들 수 있습니다."
+      },
+      "thresholds": {
+        "breast": { "greenMin": 8, "yellowMin": 6 },
+        "formula": { "week1": { "greenMin": 8, "yellowMin": 6 }, "after": { "greenMin": 6, "yellowMin": 5 } }
+      },
+      "note": "절대 횟수보다 평소 패턴에서 벗어났는지가 더 중요합니다."
+    },
+
+    "wetDiapers": {
+      "label": "젖은 기저귀",
+      "sourceId": "aap-diaper",
+      "reference": "생후 1일 1개, 2일 2개, 3일 3개, 4일 4개, 5일 이후 하루 6개 이상이 기준입니다.",
+      "minByDayOfLife": { "1": 1, "2": 2, "3": 3, "4": 4, "5plus": 6 },
+      "note": "8시간 이상 소변이 없으면 즉시 의료진에게 연락하세요."
+    },
+
+    "stool": {
+      "label": "대변",
+      "sourceId": "stool-chart",
+      "reference": "태변(검정-초록)은 생후 1~3일 정상입니다. 이후 노랑·갈색·초록은 일반적이며, 하양·회백색·혈변·검은색은 상담이 필요합니다.",
+      "colors": {
+        "meconium":  { "label": "태변 (검정-초록)", "flag": "green", "meconiumOnly": true },
+        "yellow":    { "label": "노랑 / 겨자색",     "flag": "green" },
+        "brown":     { "label": "갈색",              "flag": "green" },
+        "green":     { "label": "초록",              "flag": "green" },
+        "white":     { "label": "하양 / 회백색",     "flag": "red" },
+        "red":       { "label": "빨강 / 혈변",       "flag": "red" },
+        "black":     { "label": "검정",              "flag": "red" }
+      },
+      "textures": {
+        "seedy":   { "label": "몽우리",   "flag": "green" },
+        "soft":    { "label": "묽음",     "flag": "green" },
+        "watery":  { "label": "물똥",     "flag": "yellow" },
+        "hard":    { "label": "단단함",   "flag": "yellow" },
+        "mucus":   { "label": "점액 섞임", "flag": "yellow" }
+      },
+      "zeroCountFlag": "yellow",
+      "note": "생후 2주 이내는 수유할 때마다 보는 것도 정상입니다. 횟수보다 색과 아기 컨디션이 중요합니다."
+    },
+
+    "weight": {
+      "label": "체중",
+      "sourceId": "weight-review",
+      "reference": "생후 3~4일경 출생체중 대비 최대 7% 감소는 흔합니다. 대부분 생후 10~14일에 출생체중을 회복합니다.",
+      "thresholds": { "yellowLossPct": 7, "redLossPct": 10, "regainByDay": 14 },
+      "note": "한 번의 수치보다 추세가 중요합니다."
+    },
+
+    "temperature": {
+      "label": "체온",
+      "sourceId": "who-temp",
+      "reference": "WHO 권장 신생아 정상 체온은 36.5~37.5°C입니다. 생후 3개월 미만은 직장 체온 38.0°C 이상이면 즉시 진료가 필요합니다.",
+      "thresholds": { "greenMin": 36.5, "greenMax": 37.5, "yellowMin": 36.0, "yellowMax": 37.9, "redLow": 36.0, "redHigh": 38.0 }
+    },
+
+    "jaundice": {
+      "label": "황달",
+      "sourceId": "mayo-jaundice",
+      "reference": "황달은 보통 얼굴에서 시작해 가슴·배·팔다리·눈흰자 순으로 번집니다. 얼굴에만 있으면 대체로 경미하지만, 배 아래나 눈흰자까지 번지면 확인이 필요합니다.",
+      "levels": {
+        "none":    { "label": "없음",       "flag": "green" },
+        "face":    { "label": "얼굴",       "flag": "green" },
+        "chest":   { "label": "가슴",       "flag": "yellow" },
+        "abdomen": { "label": "배",         "flag": "red" },
+        "limbs":   { "label": "팔다리",     "flag": "red" },
+        "eyes":    { "label": "눈흰자",     "flag": "red" }
+      },
+      "note": "생후 2주가 지나도 황달이 지속되면 추가 검사가 필요합니다."
+    },
+
+    "alertness": {
+      "label": "활력",
+      "sourceId": "webmd-callnow",
+      "reference": "수유 시간에 스스로 깨고, 깨어 있을 때 반응이 있는 것이 일반적입니다.",
+      "levels": {
+        "normal":     { "label": "평소처럼 잘 깸",  "flag": "green" },
+        "sleepy":     { "label": "평소보다 처짐",   "flag": "yellow" },
+        "hardToWake": { "label": "깨우기 어려움",   "flag": "red" }
+      }
+    },
+
+    "sleep": {
+      "label": "수면",
+      "sourceId": "norton-feeding",
+      "reference": "신생아는 하루 총 14~17시간 정도 자며, 2~3시간마다 깨는 것이 일반적입니다.",
+      "note": "총 수면 시간보다 수유 시간에 깨는지가 더 중요한 지표입니다."
+    }
+  },
+
+  "generalRedFlags": {
+    "label": "즉시 상담이 필요한 신호",
+    "sourceId": "webmd-callnow",
+    "note": "아래 중 하나라도 해당되면 다른 항목과 무관하게 즉시 의료진에게 연락하세요.",
+    "items": [
+      { "id": "fever",     "label": "직장 체온 38.0°C 이상" },
+      { "id": "breathing", "label": "분당 호흡 60회 초과 또는 호흡이 멈춤" },
+      { "id": "cyanosis",  "label": "입술·피부·손발톱이 푸르스름함" },
+      { "id": "limp",      "label": "축 처지거나 깨우기 매우 어려움" },
+      { "id": "cry",       "label": "고음의 날카로운 울음이 멈추지 않음" },
+      { "id": "arched",    "label": "몸이 뻣뻣하거나 활처럼 휨" },
+      { "id": "noUrine",   "label": "8시간 이상 소변 없음" },
+      { "id": "blood",     "label": "구토물이나 대변에 피가 섞임" }
+    ]
+  }
+}

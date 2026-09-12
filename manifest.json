@@ -1,0 +1,21 @@
+{
+  "name": "신생아 데일리 헬스 트래커",
+  "short_name": "아기기록",
+  "description": "생후 2주 아기의 하루 기록을 남기고 공개 참고 기준과 비교해 보는 개인용 관찰 도구입니다. 의학적 진단 도구가 아닙니다.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12151a",
+  "theme_color": "#12151a",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
