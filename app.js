@@ -15,6 +15,11 @@
   var KEY_BABY = 'nt:baby';
   var KEY_LOG = 'nt:log:';
 
+  /* 앱 빌드 표시. 근거 화면 맨 아래에 나옵니다.
+     "폰에 지금 어떤 버전이 깔려 있는지" 확인할 수 있게 두는 값입니다.
+     앱 파일을 고쳐 배포할 때 이 값과 sw.js 의 CACHE_VERSION 을 함께 올립니다. */
+  var APP_BUILD = '2026-09-12 · 8';
+
   var state = {
     criteria: null,
     baby: null,
@@ -173,7 +178,7 @@
     var ver = '기준 버전 ' + (state.criteria.version || '—') +
               ' · 검토일 ' + (state.criteria.lastReviewed || '—');
     $('#home-criteria-version').textContent = ver;
-    $('#basis-version').textContent = ver;
+    $('#basis-version').textContent = ver + '\n앱 빌드 ' + APP_BUILD;
 
     renderBasis();
   }

@@ -1,23 +1,21 @@
 /* 신생아 데일리 헬스 트래커 — 서비스워커
  *
- * 캐시 전략은 파일 성격에 따라 둘로 나눕니다.
+ * 캐시 전략: 온라인이면 항상 최신을 받고, 캐시는 오프라인용 사본으로만 씁니다.
  *
- *  1) criteria.json  → 네트워크 우선(network-first)
- *     판정 기준은 앞으로 계속 고칠 파일입니다. 온라인이면 항상 최신본을 받아오고,
- *     오프라인일 때만 마지막으로 받아둔 사본을 씁니다. (기준을 고쳐 배포하면
- *     다음 실행에서 바로 반영됩니다.)
+ * 처음에는 화면 파일을 캐시 우선(stale-while-revalidate)으로 두었는데,
+ * 고친 내용이 폰에 한두 번 늦게 도착하는 문제가 반복됐습니다.
+ * 이 앱은 전부 합쳐 100KB도 안 되므로, 온라인일 때 매번 받아도 체감 차이가 없습니다.
+ * 그래서 "온라인이면 최신, 오프라인이면 사본" 한 가지 규칙으로 통일했습니다.
  *
- *  2) 나머지 앱 파일 → 캐시 우선 + 뒤에서 갱신(stale-while-revalidate)
- *     새벽에 오프라인이어도 즉시 뜨는 것이 중요하므로 캐시를 먼저 보여주고,
- *     백그라운드에서 새 버전을 받아둡니다. 새 버전은 다음에 앱을 열 때 보입니다.
- *
- * 앱 파일(html/js/css)을 고쳐 배포할 때는 아래 CACHE_VERSION 숫자를 함께 올리세요.
- * 그래야 브라우저가 서비스워커가 바뀐 것을 알아차리고, 새 파일을 받아
- * 앱이 다음에 열릴 때 스스로 새로고침합니다 (app.js 의 registerSW 참고).
+ *  - 온라인 : 네트워크에서 받아 캐시에 넣고 보여줍니다.
+ *            2.5초 안에 응답이 없으면 캐시본을 먼저 보여줍니다(새벽에 기다리지 않도록).
+ *  - 오프라인: 네트워크를 아예 시도하지 않고 캐시본을 바로 씁니다.
+ *            (실패할 요청 때문에 iOS 가 "비행기모드를 끄세요" 알림을 띄우는 것을 막습니다)
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = 'nt-cache-' + CACHE_VERSION;
+const NET_TIMEOUT = 2500;
 
 // 설치 시 미리 받아둘 앱 셸. 상대 경로라서 GitHub Pages 하위 경로에서도 동작합니다.
 const APP_SHELL = [
@@ -55,13 +53,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-/* 기기가 오프라인이라고 알려주면 네트워크를 아예 시도하지 않습니다.
- * 비행기모드에서 요청을 걸면 iOS 가 "비행기모드를 끄세요" 시스템 알림을 띄우는데,
- * 어차피 실패할 요청 때문에 새벽마다 알림이 뜨는 것을 막기 위해서입니다. */
-function offline() {
-  return typeof navigator !== 'undefined' && navigator.onLine === false;
-}
-
 self.addEventListener('fetch', (event) => {
   const req = event.request;
 
@@ -70,44 +61,42 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.endsWith('/criteria.json')) {
-    event.respondWith(networkFirst(req));
-  } else {
-    event.respondWith(staleWhileRevalidate(req));
-  }
+  event.respondWith(networkFirst(req));
 });
 
-function networkFirst(req) {
-  if (offline()) {
-    return caches.match(req).then((hit) => hit || offlineFallback(req));
-  }
-  return fetch(req)
-    .then((res) => {
-      if (res && res.ok) {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(req, copy));
-      }
-      return res;
-    })
-    .catch(() => caches.match(req).then((hit) => hit || offlineFallback(req)));
+/* 기기가 오프라인이라고 알려주면 네트워크를 아예 시도하지 않습니다. */
+function offline() {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
 
-function staleWhileRevalidate(req) {
-  return caches.match(req).then((cached) => {
-    // 오프라인이고 캐시에 있으면 그대로 돌려줍니다. 뒤에서 갱신하려 애쓰지 않습니다.
-    if (cached && offline()) return cached;
+function fromCache(req) {
+  return caches.match(req).then((hit) => hit || offlineFallback(req));
+}
 
-    const fresh = fetch(req)
-      .then((res) => {
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(req, copy));
-        }
-        return res;
-      })
-      .catch(() => null);
+function networkFirst(req) {
+  if (offline()) return fromCache(req);
 
-    return cached || fresh.then((res) => res || offlineFallback(req));
+  const net = fetch(req).then((res) => {
+    if (res && res.ok) {
+      const copy = res.clone();
+      caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+    }
+    return res;
+  });
+
+  // 네트워크가 느리면 캐시본을 먼저 보여주되, 받아온 최신본은 캐시에 계속 채워 둡니다.
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (res) => { if (!settled) { settled = true; resolve(res); } };
+
+    const timer = setTimeout(() => {
+      caches.match(req).then((hit) => { if (hit) finish(hit); });
+    }, NET_TIMEOUT);
+
+    net.then(
+      (res) => { clearTimeout(timer); finish(res); },
+      () => { clearTimeout(timer); fromCache(req).then(finish); }
+    );
   });
 }
 
