@@ -654,6 +654,8 @@
     allLogs: allLogs,
     go: go,
     todayStr: todayStr,
+    // 추이 화면의 신호 스트립에서 그날 기록으로 바로 이동
+    openDate: function (date) { state.date = date; go('today'); },
     activeTab: function () {
       var t = document.querySelector('#trend-tabs .tab[aria-selected="true"]');
       return t ? t.dataset.tab : 'weight';
