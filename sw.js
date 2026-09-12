@@ -11,10 +11,12 @@
  *     새벽에 오프라인이어도 즉시 뜨는 것이 중요하므로 캐시를 먼저 보여주고,
  *     백그라운드에서 새 버전을 받아둡니다. 새 버전은 다음에 앱을 열 때 보입니다.
  *
- * 앱 파일을 수정했는데 반영이 안 되면 아래 CACHE_VERSION 숫자를 올리세요.
+ * 앱 파일(html/js/css)을 고쳐 배포할 때는 아래 CACHE_VERSION 숫자를 함께 올리세요.
+ * 그래야 브라우저가 서비스워커가 바뀐 것을 알아차리고, 새 파일을 받아
+ * 앱이 다음에 열릴 때 스스로 새로고침합니다 (app.js 의 registerSW 참고).
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = 'nt-cache-' + CACHE_VERSION;
 
 // 설치 시 미리 받아둘 앱 셸. 상대 경로라서 GitHub Pages 하위 경로에서도 동작합니다.

@@ -117,6 +117,19 @@
     // 오프라인일 때는 등록(=갱신 확인)을 건너뜁니다. 이미 설치된 서비스워커는 그대로 동작하고,
     // 어차피 실패할 요청 때문에 비행기모드에서 시스템 알림이 뜨는 것을 막습니다.
     if (navigator.onLine === false) return;
+
+    /* 새 버전이 배포되면 앱이 스스로 한 번 새로고침합니다.
+       서비스워커가 앱 파일을 폰에 저장해 두기 때문에, 이게 없으면 고친 내용이
+       다음 번, 그 다음 번 실행에나 보입니다. 입력 중이던 내용은 먼저 저장합니다. */
+    var hadController = !!navigator.serviceWorker.controller;   // 첫 설치와 '갱신' 을 구분
+    var reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController || reloading) return;
+      reloading = true;
+      flush();
+      location.reload();
+    });
+
     navigator.serviceWorker.register('sw.js').catch(function () { /* 없어도 앱은 동작합니다 */ });
   }
 
