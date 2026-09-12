@@ -1,0 +1,296 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12151a">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="아기기록">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+<title>신생아 데일리 헬스 트래커</title>
+
+<!--
+  화면은 페이지 이동 없이 section 하나만 보여주는 방식입니다.
+  app.js 가 body 의 data-screen 값을 바꾸면 해당 화면만 표시됩니다.
+
+  선택지 목록(대변 색/형태, 황달 단계, 활력, 증상 체크 등)은 여기에 적지 않습니다.
+  criteria.json 에서 읽어 app.js 가 채웁니다. 기준 파일만 고치면 화면도 따라 바뀝니다.
+-->
+
+<div id="boot" class="boot">
+  <p class="boot-msg">불러오는 중…</p>
+</div>
+
+<main id="app" hidden>
+
+  <!-- ── 설정 : 아기 정보 (최초 1회) ─────────────────────────── -->
+  <section class="screen" id="screen-setup">
+    <header class="topbar">
+      <h1>아기 정보</h1>
+      <button type="button" class="topbar-action" id="setup-close" hidden>닫기</button>
+    </header>
+
+    <form class="pad" id="form-baby" novalidate>
+      <p class="hint">앱을 쓰기 위해 한 번만 입력합니다. 나중에 언제든 고칠 수 있습니다.</p>
+
+      <label class="field">
+        <span class="field-label">이름 / 태명</span>
+        <input type="text" id="baby-name" name="name" autocomplete="off" placeholder="예: 젤리" required>
+      </label>
+
+      <label class="field">
+        <span class="field-label">생년월일</span>
+        <input type="date" id="baby-birthdate" name="birthDate" required>
+      </label>
+
+      <label class="field">
+        <span class="field-label">출생 체중 (g)</span>
+        <input type="number" id="baby-birthweight" name="birthWeight"
+               inputmode="numeric" min="300" max="7000" step="1" placeholder="예: 3200" required>
+      </label>
+
+      <fieldset class="field">
+        <legend class="field-label">수유 방식</legend>
+        <div class="chips" id="baby-feedingtype" role="radiogroup" aria-label="수유 방식">
+          <button type="button" class="chip" role="radio" aria-checked="false" data-value="breast">모유</button>
+          <button type="button" class="chip" role="radio" aria-checked="false" data-value="formula">분유</button>
+          <button type="button" class="chip" role="radio" aria-checked="false" data-value="mixed">혼합</button>
+        </div>
+      </fieldset>
+
+      <p class="form-error" id="setup-error" role="alert" hidden></p>
+
+      <button type="submit" class="btn btn-primary btn-block">저장하고 시작하기</button>
+
+      <div class="danger-zone" id="setup-danger" hidden>
+        <button type="button" class="btn btn-ghost btn-block" id="btn-export">기록 내보내기 (JSON 파일)</button>
+        <button type="button" class="btn btn-ghost btn-block" id="btn-import">기록 불러오기</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <button type="button" class="btn btn-danger btn-block" id="btn-wipe">모든 기록 삭제</button>
+      </div>
+    </form>
+  </section>
+
+
+  <!-- ── 홈 ────────────────────────────────────────────────── -->
+  <section class="screen" id="screen-home">
+    <header class="topbar">
+      <h1 id="home-babyname">아기</h1>
+      <button type="button" class="topbar-action" id="home-settings" aria-label="아기 정보 설정">설정</button>
+    </header>
+
+    <div class="pad">
+      <div class="age-block">
+        <div class="age-big" id="home-age">생후 —일</div>
+        <div class="age-sub" id="home-date">—</div>
+      </div>
+
+      <!-- 신호등 한 줄 -->
+      <div class="light-row" id="home-light" data-flag="none">
+        <span class="light-dot"></span>
+        <span class="light-text" id="home-light-text">오늘 기록이 아직 없습니다</span>
+      </div>
+
+      <!-- 판정 카드 목록 : red → yellow → green → 미입력 순으로 app.js 가 채웁니다 -->
+      <div id="home-cards" class="cards"></div>
+
+      <button type="button" class="btn btn-primary btn-block btn-lg" id="home-record">오늘 기록하기</button>
+
+      <section class="disclaimer" id="home-disclaimer" aria-label="주의사항">
+        <h2 class="disclaimer-title">꼭 읽어주세요</h2>
+        <p id="home-disclaimer-text"></p>
+        <p class="meta"><span id="home-criteria-version"></span></p>
+      </section>
+    </div>
+  </section>
+
+
+  <!-- ── 오늘 : 기록 입력 ──────────────────────────────────── -->
+  <section class="screen" id="screen-today">
+    <header class="topbar datenav">
+      <button type="button" class="datenav-btn" id="date-prev" aria-label="이전 날짜">‹</button>
+      <div class="datenav-mid">
+        <div class="datenav-date" id="today-date">—</div>
+        <div class="datenav-age" id="today-age">—</div>
+      </div>
+      <button type="button" class="datenav-btn" id="date-next" aria-label="다음 날짜">›</button>
+    </header>
+
+    <form class="pad" id="form-log" novalidate>
+
+      <!-- 수유 -->
+      <section class="box" data-section="feeding">
+        <h2 class="box-title">수유 <span class="sig" data-sig="feeding"></span></h2>
+
+        <div class="stepper-row" data-stepper="breastFeedCount">
+          <span class="stepper-label">모유 횟수</span>
+          <div class="stepper">
+            <button type="button" class="step-btn" data-step="-1" aria-label="모유 횟수 감소">−</button>
+            <output class="step-val" id="val-breastFeedCount">0</output>
+            <button type="button" class="step-btn" data-step="1" aria-label="모유 횟수 증가">+</button>
+          </div>
+        </div>
+
+        <div class="stepper-row" data-stepper="formulaFeedCount">
+          <span class="stepper-label">분유 횟수</span>
+          <div class="stepper">
+            <button type="button" class="step-btn" data-step="-1" aria-label="분유 횟수 감소">−</button>
+            <output class="step-val" id="val-formulaFeedCount">0</output>
+            <button type="button" class="step-btn" data-step="1" aria-label="분유 횟수 증가">+</button>
+          </div>
+        </div>
+
+        <label class="field inline-field">
+          <span class="field-label">분유 총량 (mL)</span>
+          <input type="number" id="in-formulaTotalMl" inputmode="numeric" min="0" max="2000" step="1" placeholder="선택 입력">
+        </label>
+      </section>
+
+      <!-- 기저귀 · 대변 -->
+      <section class="box" data-section="diaper">
+        <h2 class="box-title">기저귀 · 대변 <span class="sig" data-sig="wetDiapers"></span><span class="sig" data-sig="stool"></span></h2>
+
+        <div class="stepper-row" data-stepper="wetDiaperCount">
+          <span class="stepper-label">젖은 기저귀</span>
+          <div class="stepper">
+            <button type="button" class="step-btn" data-step="-1" aria-label="젖은 기저귀 감소">−</button>
+            <output class="step-val" id="val-wetDiaperCount">0</output>
+            <button type="button" class="step-btn" data-step="1" aria-label="젖은 기저귀 증가">+</button>
+          </div>
+        </div>
+
+        <div class="stepper-row" data-stepper="stoolCount">
+          <span class="stepper-label">대변 횟수</span>
+          <div class="stepper">
+            <button type="button" class="step-btn" data-step="-1" aria-label="대변 횟수 감소">−</button>
+            <output class="step-val" id="val-stoolCount">0</output>
+            <button type="button" class="step-btn" data-step="1" aria-label="대변 횟수 증가">+</button>
+          </div>
+        </div>
+
+        <div class="sub">
+          <span class="field-label">대변 색 <em class="muted">(여러 개 선택 가능)</em></span>
+          <div class="chips" id="chips-stoolColor" data-mode="multi" role="group" aria-label="대변 색"></div>
+        </div>
+
+        <div class="sub">
+          <span class="field-label">대변 형태</span>
+          <div class="chips" id="chips-stoolTexture" data-mode="single" role="radiogroup" aria-label="대변 형태"></div>
+        </div>
+      </section>
+
+      <!-- 황달 -->
+      <section class="box" data-section="jaundice">
+        <h2 class="box-title">황달 <span class="sig" data-sig="jaundice"></span></h2>
+        <p class="box-hint" id="hint-jaundice"></p>
+        <div class="chips" id="chips-jaundice" data-mode="single" role="radiogroup" aria-label="황달 범위"></div>
+      </section>
+
+      <!-- 활력 -->
+      <section class="box" data-section="alertness">
+        <h2 class="box-title">활력 <span class="sig" data-sig="alertness"></span></h2>
+        <div class="chips" id="chips-alertness" data-mode="single" role="radiogroup" aria-label="활력"></div>
+      </section>
+
+      <!-- 접힌 섹션 : 수면 · 체온 · 체중 -->
+      <details class="box box-details" data-section="optional">
+        <summary class="box-title">
+          수면 · 체온 · 체중
+          <span class="sig" data-sig="temperature"></span><span class="sig" data-sig="weight"></span>
+        </summary>
+
+        <label class="field inline-field">
+          <span class="field-label">총 수면 (시간)</span>
+          <input type="number" id="in-sleepTotalHours" inputmode="decimal" min="0" max="24" step="0.5" placeholder="선택 입력">
+        </label>
+
+        <label class="field inline-field">
+          <span class="field-label">체온 (°C)</span>
+          <input type="number" id="in-temperature" inputmode="decimal" min="30" max="43" step="0.1" placeholder="선택 입력">
+        </label>
+
+        <label class="field inline-field">
+          <span class="field-label">체중 (g)</span>
+          <input type="number" id="in-weightGram" inputmode="numeric" min="300" max="9000" step="1" placeholder="선택 입력">
+        </label>
+      </details>
+
+      <!-- 즉시 상담 신호 -->
+      <section class="box box-alert" data-section="symptoms">
+        <h2 class="box-title" id="symptoms-title">즉시 상담이 필요한 신호 <span class="sig" data-sig="symptoms"></span></h2>
+        <p class="box-hint" id="symptoms-note"></p>
+        <div class="checklist" id="checks-symptoms"></div>
+      </section>
+
+      <!-- 메모 -->
+      <section class="box" data-section="memo">
+        <h2 class="box-title">메모</h2>
+        <textarea id="in-memo" rows="3" placeholder="오늘 특별히 눈에 띈 점"></textarea>
+      </section>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" id="log-save">저장</button>
+      <p class="save-note" id="save-note" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+
+
+  <!-- ── 추이 ──────────────────────────────────────────────── -->
+  <section class="screen" id="screen-trend">
+    <header class="topbar"><h1>추이</h1></header>
+
+    <div class="tabs" id="trend-tabs" role="tablist" aria-label="추이 항목">
+      <button type="button" class="tab" role="tab" data-tab="weight" aria-selected="true">체중</button>
+      <button type="button" class="tab" role="tab" data-tab="wetDiapers" aria-selected="false">젖은 기저귀</button>
+      <button type="button" class="tab" role="tab" data-tab="feeding" aria-selected="false">수유</button>
+      <button type="button" class="tab" role="tab" data-tab="temperature" aria-selected="false">체온</button>
+    </div>
+
+    <div class="pad">
+      <div class="chart-wrap" id="trend-chart"></div>
+      <p class="chart-legend" id="trend-legend"></p>
+
+      <h2 class="strip-title">날짜별 신호</h2>
+      <div class="strip" id="trend-strip"></div>
+      <p class="chart-empty" id="trend-empty" hidden>아직 기록이 없습니다.</p>
+    </div>
+  </section>
+
+
+  <!-- ── 근거 ──────────────────────────────────────────────── -->
+  <section class="screen" id="screen-basis">
+    <header class="topbar"><h1>근거</h1></header>
+    <div class="pad">
+      <section class="disclaimer" aria-label="주의사항">
+        <h2 class="disclaimer-title">꼭 읽어주세요</h2>
+        <p id="basis-disclaimer"></p>
+        <p class="muted" id="basis-purpose"></p>
+      </section>
+
+      <div id="basis-categories"></div>
+
+      <section class="box" id="basis-redflags-box">
+        <h2 class="box-title" id="basis-redflags-title"></h2>
+        <p class="box-hint" id="basis-redflags-note"></p>
+        <ul class="plain-list" id="basis-redflags-list"></ul>
+        <p class="src" id="basis-redflags-src"></p>
+      </section>
+
+      <p class="meta" id="basis-version"></p>
+    </div>
+  </section>
+
+</main>
+
+<!-- 하단 고정 내비 -->
+<nav class="nav" id="nav" hidden>
+  <button type="button" class="nav-btn" data-screen="home"><span class="nav-ico">●</span>홈</button>
+  <button type="button" class="nav-btn" data-screen="today"><span class="nav-ico">✎</span>오늘</button>
+  <button type="button" class="nav-btn" data-screen="trend"><span class="nav-ico">◲</span>추이</button>
+  <button type="button" class="nav-btn" data-screen="basis"><span class="nav-ico">≡</span>근거</button>
+</nav>
+
+<script src="evaluate.js"></script>
+<script src="chart.js"></script>
+<script src="app.js"></script>
